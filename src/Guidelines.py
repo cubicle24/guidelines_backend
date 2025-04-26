@@ -128,16 +128,16 @@ class Guidelines:
             input_variables=["patient_data", "guidelines"],
             template="""
             Based on the patient information and relevant clinical guidelines for screening tests, recommend appropriate screening tests for the patient.
-            Format as a ranked list with justification and next due date for each test.  The recommendations should be ordered from highest priority to lowest priority.
+            Format as a ranked list (from highest to lowest priority) with justification and next due date for each test.
 
-            You must recommend all screening tests that the patient meets the criteria for based on the patient's age or gender. Do not miss them. 
+            Recommend all screening tests that the patient meets the criteria for based on the patient's age or gender. Double check to not miss any.
             Never recommend a screening test for a male that only applies to females, and vice versa.
 
             Do not make up information.  Do not query the internet.  Only give recommendations based on the retieved documents 
             and what is explicitly state or can be reasonably inferred.  If a test is not indicated, do not mention it at all.
+            You may only use the providedclinical guidelines and not your general knowledge to make recommendations.
 
-            If you can not make any recommendations based on the guidelines and the patient's clinical information, state that you can not make any recommendations.
-            You may only use the clinical guidelines and not your general knowledge to make recommendations.
+            If you can not make any recommendations, state that you can not make any recommendations.
 
             Patient Information:
             {patient_data}
@@ -146,28 +146,61 @@ class Guidelines:
             {guidelines}
             
             List all recommendations that you find to be appropriate.  Limit the justification and evidence for each recommendation to 20 words or less
-            For the evidence, quote the most relevant parts of the guidelines that you used to make the recommendation.
+            For the evidence, find the metadata associated with the retrieved documents and cite the "governing_body" and "topic" and "pub_date" that you used to make the recommendation.
             
-            Provide recommendations in this format:
-            1. [Test Name] - [Justification] - Next due: [Date] - Evidence: [Evidence]
-            2. [Test Name] - [Justification] - Next due: [Date] - Evidence: [Evidence]
-            3. [Test Name] - [Justification] - Next due: [Date] - Evidence: [Evidence]
+            Provide recommendations in the following JSON format.
+            Example:
+            {{
+              "recommendations": [
+                {{
+                  "test_name": "colonoscopy",
+                  "justification": "patients age 50 and older should have screening colonoscopy every ten years. He has never had one.",
+                  "evidence": "USPTF colonoscopy guidelines, 2018"
+                }},
+                {{
+                  "test_name": "mammogram",
+                  "justification": "women age 40 to 74 are asked to have a mammogram every two years. Her last one was 3 years ago.",
+                  "evidence": "USPTF mammogram screening guidelines, 2021"
+                }}
+              ]
+            }}
+        
 
-            After first looking only at the provided guidelines and giving recommendations, add another set of recommendations.  For this section, read through the full clinical note provided
+            After first looking only at the provided guidelines and giving recommendations, add another set of additional recommendations.  For this section, read through the full clinical note provided
             and ONLY search the US Preventive Task Force Guidelines website for additional screening tests that the patient meets criteria for. You are not allowed to search any other website.
-            Make sure to say that these are only suggestions that were found online and are not guaranteed to be relevant.  The clinician must review these additional recommendations with more scrutiny.
             Make as many additional recommendations as you can find reasonable justification for.  Limit the justification and evidence for each recommendation to 20 words or less.
 
             If a test is not indicated, do not mention it at all.
 
-            Provide additional recommendations in this format:
-            -----------------------------------------
-            ---POSSIBLE ADDITIONAL RECOMMENDATIONS---
-            -----------------------------------------
+            Provide additional recommendations in this JSON format.  Attach them to the same recommendations JSON object from above.
 
-            1. [Test Name] - [Justification] - Next due: [Date] - Evidence: [Evidence]
-            2. [Test Name] - [Justification] - Next due: [Date] - Evidence: [Evidence]
-            3. [Test Name] - [Justification] - Next due: [Date] - Evidence: [Evidence]
+            Example:
+            {{
+              "recommendations": [
+                {{
+                  "test_name": "colonoscopy",
+                  "justification": "patients age 50 and older should have screening colonoscopy every ten years. He has never had one.",
+                  "evidence": "USPTF colonoscopy guidelines, 2018"
+                }},
+                {{
+                  "test_name": "mammogram",
+                  "justification": "women age 40 to 74 are asked to have a mammogram every two years. Her last one was 3 years ago.",
+                  "evidence": "USPTF mammogram screening guidelines, 2021"
+                }}
+              ],
+              "additional_recommendations": [
+                {{
+                  "test_name": "lipid panel",
+                  "justification": "patients with a history of high LDL levels should have a lipid panel every 2 years.",
+                  "evidence": "USPTF lipid panel guidelines, 2020"
+                }},
+                {{
+                  "test_name": "flu shot",
+                  "justification": "people age 18-80 are asked to have a flu vaccination each year.",
+                  "evidence": "USPTF flu vaccination guidelines, 2022"
+                }}
+              ]
+            }}
 
             """
         )
@@ -263,7 +296,7 @@ class Guidelines:
             | guidelines_fetcher
             # Generate recommendations
             | {"patient_data": lambda x: x["patient_data"],
-               "recommendations": recommendation_prompt | self.llm}
+               "recommendations": recommendation_prompt | self.llm | JsonOutputParser()}
         )
 
 
@@ -277,7 +310,8 @@ class Guidelines:
         
         return {
             "patient_data": result["patient_data"],
-            "recommendations": result["recommendations"].content
+            # "recommendations": result["recommendations"].content
+            "recommendations": result["recommendations"]
         }
 
 # Example usage
