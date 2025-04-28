@@ -7,6 +7,7 @@ recommendations based on patient clinical notes using the Guidelines RAG system.
 """
 
 import logging
+import json
 import os
 import time
 from typing import Dict, Any, Optional
@@ -76,7 +77,7 @@ class ClinicalNoteRequest(BaseModel):
 
 class RecommendationResponse(BaseModel):
     patient_data: Dict[str, Any]
-    recommendations: str
+    recommendations: Dict[str, Any]
     
     class Config:
         schema_extra = {
@@ -87,9 +88,36 @@ class RecommendationResponse(BaseModel):
                     "past_medical_history": ["angina", "cardiac stents"],
                     "social_history": {"smoking_status": "former smoker"}
                 },
-                "recommendations": "1. Abdominal Aortic Aneurysm Screening - One-time screening for men aged 65-75 who have ever smoked - Next due: Now - Evidence: USPSTF recommends one-time screening for AAA in men aged 65-75 who have ever smoked."
+                "recommendations": {
+                    "recommendations": [
+                        {
+                            "test_name": "colonoscopy",
+                            "justification": "patients age 50 and older should have screening colonoscopy every ten years. He has never had one.",
+                            "evidence": "USPTF colonoscopy guidelines, 2018"
+                        },
+                        {
+                            "test_name": "mammogram",
+                            "justification": "women age 40 to 74 are asked to have a mammogram every two years. Her last one was 3 years ago.",
+                            "evidence": "USPTF mammogram screening guidelines, 2021"
+                        }
+                    ],
+                    "additional_recommendations": [
+                        {
+                            "test_name": "lipid panel",
+                            "justification": "patients with a history of high LDL levels should have a lipid panel every 2 years.",
+                            "evidence": "USPTF lipid panel guidelines, 2020"
+                        },
+                        {
+                            "test_name": "flu shot",
+                            "justification": "people age 18-80 are asked to have a flu vaccination each year.",
+                            "evidence": "USPTF flu vaccination guidelines, 2022"
+                        }
+                    ]
+                }
             }
         }
+
+        
 
 # Middleware for request timing and logging
 @app.middleware("http")
@@ -110,6 +138,26 @@ async def generic_exception_handler(request: Request, exc: Exception):
     )
 
 # API endpoints
+# @app.post("/guidelines/recommendations", response_model=RecommendationResponse)
+# async def get_recommendations(request: ClinicalNoteRequest):
+#     """
+#     Generate screening recommendations based on a clinical note.
+    
+#     Returns patient data extracted from the note and recommended screening tests.
+#     """
+#     try:
+#         logger.info("Processing recommendation request")
+#         results = guidelines_system.generate_recommendations({"clinical_note": request.clinical_note})
+#         logger.info("Successfully generated recommendations")
+#         logger.info(f"******Results:****** {results}")
+#         return results
+#     except Exception as e:
+#         logger.error(f"Error generating recommendations: {str(e)}", exc_info=True)
+#         raise HTTPException(
+#             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+#             detail=f"Error generating recommendations: {str(e)}"
+#         )
+
 @app.post("/guidelines/recommendations", response_model=RecommendationResponse)
 async def get_recommendations(request: ClinicalNoteRequest):
     """
@@ -119,9 +167,24 @@ async def get_recommendations(request: ClinicalNoteRequest):
     """
     try:
         logger.info("Processing recommendation request")
-        results = guidelines_system.generate_recommendations({"clinical_note": request.clinical_note})
+        raw_response = guidelines_system.generate_recommendations({"clinical_note": request.clinical_note})
+        
+        # Parse the response if it's a string
+        if isinstance(raw_response["recommendations"], str):
+            try:
+                recommendations = json.loads(raw_response["recommendations"])
+                raw_response["recommendations"] = recommendations
+            except json.JSONDecodeError:
+                logger.error("Failed to parse LLM response as JSON")
+                logger.error(f"LLM response: {raw_response['recommendations']}")
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="LLM returned invalid JSON format"
+                )
+                
         logger.info("Successfully generated recommendations")
-        return results
+        return raw_response
+        
     except Exception as e:
         logger.error(f"Error generating recommendations: {str(e)}", exc_info=True)
         raise HTTPException(

@@ -16,6 +16,9 @@ from GuidelinesLoader import GuidelinesLoader
 from langchain_groq import ChatGroq
 from sentence_transformers import SentenceTransformer
 from langchain.embeddings.base import Embeddings
+from langchain_fireworks import ChatFireworks
+import shutil
+
 
 
 class SentenceTransformerEmbeddings(Embeddings):
@@ -37,7 +40,7 @@ class Guidelines:
     def __init__(self, api_key=None):
         """Initialize the RAG system with necessary components."""
         # self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro-exp-03-25", temperature=0.0)
-        self.choose_model("llama4")
+        self.choose_model("google")
         # self.embeddings = SentenceTransformerEmbeddings('all-MiniLM-L6-v2')
         self.setup_vector_db()
         self.setup_rag_pipeline()
@@ -46,10 +49,32 @@ class Guidelines:
         """Set up the model and embeddings based on the model name. Allows you to switch LLMs"""
         if model_name == "google":
             print(f"selecting google model")
-            self.llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.0)
-            self.embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001",google_api_key=os.environ.get("GOOGLE_API_KEY"))
+            self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-preview-04-17", temperature=0.0)
+            # self.embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001",google_api_key=os.environ.get("GOOGLE_API_KEY"))
+            self.embeddings = SentenceTransformerEmbeddings('emilyalsentzer/Bio_ClinicalBERT')
+
+        elif model_name == "deepseek":
+            print(f"selecting deepseek model")
+            self.llm = ChatGroq(model="deepseek-r1-distill-llama-70b", temperature=0.0, api_key="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")
+            self.embeddings = SentenceTransformerEmbeddings('emilyalsentzer/Bio_ClinicalBERT')
+        elif model_name == "llama3":
+            print(f"selecting llama3 model")
+            self.llm = ChatGroq(model="llama3-70b-8192", temperature=0.0, api_key="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")
+            self.embeddings = SentenceTransformerEmbeddings('emilyalsentzer/Bio_ClinicalBERT')
+        elif model_name == "llama3_fireworks":
+            print(f"selecting llama3 fireworks model")
+            self.llm = ChatFireworks(model="accounts/fireworks/models/llama-v3p3-70b-instruct", temperature=0.0, api_key="fw_3ZkSCakHDYEgb98FFfDK8Aqe")
+            self.embeddings = SentenceTransformerEmbeddings('emilyalsentzer/Bio_ClinicalBERT')
+        # elif model_name == "deepseek_fireworks":#don't use this one it's $8 and slow
+        #     print(f"selecting deepseek fireworks model")
+        #     self.llm = ChatFireworks(model="accounts/fireworks/models/deepseek-r1", temperature=0.0, api_key="fw_3ZkSCakHDYEgb98FFfDK8Aqe")
+        #     self.embeddings = SentenceTransformerEmbeddings('emilyalsentzer/Bio_ClinicalBERT')
+        elif model_name == "llama4_fireworks":
+            print(f"selecting llama4 fireworks model")
+            self.llm = ChatGroq(model="accounts/fireworks/models/llama4-scout-instruct-basic", temperature=0.0, api_key="fw_3ZkSCakHDYEgb98FFfDK8Aqe")
+            self.embeddings = SentenceTransformerEmbeddings('emilyalsentzer/Bio_ClinicalBERT')
         else:
-            print(f"selecting llama4 model")
+            print(f"selecting lllama4 groq model")
             groq_api_key = os.environ.get("GROQ_API_KEY")
             self.llm = ChatGroq(model="meta-llama/llama-4-scout-17b-16e-instruct", temperature=0.0, api_key="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")
             # self.embeddings = SentenceTransformerEmbeddings('all-mpnet-base-v2')
@@ -68,6 +93,8 @@ class Guidelines:
             )
             print("Loaded existing guideline database")
         except:
+    # Remove the existing database directory if it exists
+
             print("Creating new guideline database with LLM metadata extraction")
             
             # Use the LLM-based metadata extractor
@@ -77,8 +104,10 @@ class Guidelines:
             print(f"Loaded {len(documents)} guideline documents with LLM-extracted metadata")
             
             # Split documents while preserving metadata
-            text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
-            splits = text_splitter.split_documents(documents)
+            text_splitter = RecursiveCharacterTextSplitter(separators=["\n\n", "\n", ".", " "],  # <- prioritizes paragraphs first
+            chunk_size=1000, chunk_overlap=100)
+            splits = text_splitter.split_documents(documents)#this does the chunking
+            # splits = documents #skips chunking
             
             print(f"Split into {len(splits)} chunks for indexing")
             
@@ -104,11 +133,12 @@ class Guidelines:
 
             1. Patient age (as a number)
             2. Patient gender (male/female)
-            3. Race
-            4. Past medical history (list of conditions)
-            5. Family history (list of conditions and affected relatives)
-            6. Social history (including smoking status, alcohol use, drug use, exercise, occupation, travel history)
-            7. Previous screening tests with dates (e.g., colonoscopy, mammogram)
+            3. Pregnancy status
+            4. Race
+            5. Past medical history (list of conditions)
+            6. Family history (list of conditions and affected relatives)
+            7. Social history (including smoking status, alcohol use, drug use, exercise, occupation, travel history, domestic partner violence)
+            8. Previous screening tests with dates (e.g., colonoscopy, mammogram)
 
             """
         )
@@ -122,84 +152,99 @@ class Guidelines:
             # 'previous_screening_tests': {'colonoscopy': '2018 (normal)', 'mammogram': '2021 (BIRADS 2)', 'pap_smear': '2020 (normal)', 'lipid_panel': '1 year ago (borderline high LDL)'}}
         return extraction_prompt
 
+
+
     def create_recommendation_prompt(self):
         """Set up chain for generating screening recommendations."""
         recommendation_prompt = PromptTemplate(
             input_variables=["patient_data", "guidelines"],
             template="""
-            Based on the patient information and relevant clinical guidelines for screening tests, recommend appropriate screening tests for the patient.
-            Format as a ranked list (from highest to lowest priority) with justification and next due date for each test.
+           
+            <SYSTEM>:
+            You are a backend API response generator. Output must be valid JSON only. Do not include any preamble, commentary, or prose. Only return a single JSON object that matches the format provided.
 
-            Recommend all screening tests that the patient meets the criteria for based on the patient's age or gender. Double check to not miss any.
-            Never recommend a screening test for a male that only applies to females, and vice versa.
+            Your task is to generate evidence-based screening recommendations for a patient based on their medical information and the provided clinical guidelines.
+            First, extract the patient's age, gender, and pregnancy status. These 3 pieces of information are the most important for determining which screening tests to recommend.
 
-            Do not make up information.  Do not query the internet.  Only give recommendations based on the retieved documents 
-            and what is explicitly state or can be reasonably inferred.  If a test is not indicated, do not mention it at all.
-            You may only use the providedclinical guidelines and not your general knowledge to make recommendations.
+            Recommend all screening tests that the patient meets the criteria for, based primarily on the patient's age, gender, and pregnancy status. 
+            Never recommend a screening test for a male that only applies to females, and vice versa.  If a female is not pregnant, do not recommend any pregnancy specific tests.
+
+            Do not make up information.  Do not query the internet.  Do not use your general knowledge. Only conssult the retrieved documents. 
+            If a test is not indicated, do not mention or recommend it at all. Double check your recommendations to never make the error of recommending a test that the patient does not meet criteria for.
 
             If you can not make any recommendations, state that you can not make any recommendations.
+            
+            Generate a ranked list of recommended screening tests from highest to lowest priority.  
+            For each recommendation, provide your justification and reasoning for the recommendation based on the guidelines.  Limit the justification to 100 words or less.            
+            If your justification is that the patient does not fit the guidelines and are therefore not recommending a test, remove the recommendation from the list.  Do not list it all.
+
+            Then cite the evidence (source) by finding the metadata associated with the retrieved documents. Cite the "governing_body", "topic", and "pub_date" that you consulted to make the recommendation.
+            
+            After first looking only at the provided guidelines and giving recommendations, attach a set of additional recommendations.
+            For this section, read the entire clinical note, then you may use your general knowledge as well as ONLY search the US Preventive Task 
+            Force Guidelines website for additional screening tests that the patient meets criteria for, focusing on age, gender, and pregnancy status. 
+            Make as many additional recommendations as you can find reasonable justification for. Attach these
+            additional recommendations under the JSON key "additional_recommendations" so that it is clear these come 
+            from outside sources.
 
             Patient Information:
             {patient_data}
             
             Relevant Guidelines:
             {guidelines}
-            
-            List all recommendations that you find to be appropriate.  Limit the justification and evidence for each recommendation to 20 words or less
-            For the evidence, find the metadata associated with the retrieved documents and cite the "governing_body" and "topic" and "pub_date" that you used to make the recommendation.
-            
-            Provide recommendations in the following JSON format.
-            Example:
-            {{
-              "recommendations": [
-                {{
-                  "test_name": "colonoscopy",
-                  "justification": "patients age 50 and older should have screening colonoscopy every ten years. He has never had one.",
-                  "evidence": "USPTF colonoscopy guidelines, 2018"
-                }},
-                {{
-                  "test_name": "mammogram",
-                  "justification": "women age 40 to 74 are asked to have a mammogram every two years. Her last one was 3 years ago.",
-                  "evidence": "USPTF mammogram screening guidelines, 2021"
-                }}
-              ]
-            }}
-        
 
-            After first looking only at the provided guidelines and giving recommendations, add another set of additional recommendations.  For this section, read through the full clinical note provided
-            and ONLY search the US Preventive Task Force Guidelines website for additional screening tests that the patient meets criteria for. You are not allowed to search any other website.
-            Make as many additional recommendations as you can find reasonable justification for.  Limit the justification and evidence for each recommendation to 20 words or less.
+            If you have no guidelines to consult, return an empty but valid JSON object. 
+            Return only the JSON object, with no extra text or formatting.
+            If you have relevant guidelines to consult, order recommendations as a ranked list (from highest to lowest priority).  
+            Return all recommendations in this EXACT JSON structure and format below. 
+            Do not include any text outside the JSON object. Double check five times and self-correct that valid JSON is returned.
+            Before you return the JSON object, triple check that the JSON follows the structure below and modify the structure if it does not.
+           
 
-            If a test is not indicated, do not mention it at all.
+            <EXAMPLE OUTPUT>:
 
-            Provide additional recommendations in this JSON format.  Attach them to the same recommendations JSON object from above.
+            "recommendations": {{
+                "recommendations": [
+                    {{
+                        "test": "Osteoporosis screening",
+                        "justification": "Male patient with family history of low bone density",
+                        "next_due_date": "Not specified",
+                        "evidence": "USPSTF recommends screening for osteoporosis in women 65 years or older (moderate certainty)",
+                        "governing_body": "USPSTF",
+                        "topic": "Osteoporosis",
+                        "pub_date": "Not specified"
+                    }},
+                    {{
+                        "test": "Diabetes screening",
+                        "justification": "Male patient with risk factors for diabetes (age, family history not specified)",
+                        "next_due_date": "Not specified",
+                        "evidence": "USPSTF recommends screening for diabetes in adults with risk factors (not specified)",
+                        "governing_body": "USPSTF",
+                        "topic": "Diabetes",
+                        "pub_date": "Not specified"
+                    }}
+                ],
+                        "additional_recommendations": [
+                    {{
+                        "test": "Osteoporosis screening",
+                        "justification": "Male patient with family history of low bone density",
+                        "next_due_date": "Not specified",
+                        "evidence": "USPSTF recommends screening for osteoporosis in women 65 years or older (moderate certainty)",
+                        "governing_body": "USPSTF",
+                        "topic": "Osteoporosis",
+                        "pub_date": "2020"
+                    }},
+                    {{
+                        "test": "Hepatitis C screening",
+                        "justification": "Male patient with previous IV drug use",
+                        "next_due_date": "Not specified",
+                        "evidence": "USPSTF recommends screening for former IV drug users",
+                        "governing_body": "USPSTF",
+                        "topic": "Hepatitis C Guidelines",
+                        "pub_date": "2014"
+                    }}
+                ]
 
-            Example:
-            {{
-              "recommendations": [
-                {{
-                  "test_name": "colonoscopy",
-                  "justification": "patients age 50 and older should have screening colonoscopy every ten years. He has never had one.",
-                  "evidence": "USPTF colonoscopy guidelines, 2018"
-                }},
-                {{
-                  "test_name": "mammogram",
-                  "justification": "women age 40 to 74 are asked to have a mammogram every two years. Her last one was 3 years ago.",
-                  "evidence": "USPTF mammogram screening guidelines, 2021"
-                }}
-              ],
-              "additional_recommendations": [
-                {{
-                  "test_name": "lipid panel",
-                  "justification": "patients with a history of high LDL levels should have a lipid panel every 2 years.",
-                  "evidence": "USPTF lipid panel guidelines, 2020"
-                }},
-                {{
-                  "test_name": "flu shot",
-                  "justification": "people age 18-80 are asked to have a flu vaccination each year.",
-                  "evidence": "USPTF flu vaccination guidelines, 2022"
-                }}
-              ]
             }}
 
             """
@@ -241,11 +286,13 @@ class Guidelines:
     def setup_rag_pipeline(self):
         """Set up the integrated RAG pipeline using LCEL."""
         
-        # Create a retriever from the vector database
+        # Creating a retriever from a vector database
         base_retriever = self.vector_db.as_retriever(
-            search_kwargs={"k": 75})
+            search_kwargs={"k":10},search_type="mmr",lambda_mult=0.1)
+            # search_kwargs={"k":15},search_type="similarity")
         compressor = LLMChainExtractor.from_llm(self.llm)
-        retriever = ContextualCompressionRetriever(base_compressor=compressor, base_retriever=base_retriever)
+        # retriever = ContextualCompressionRetriever(base_compressor=compressor, base_retriever=base_retriever)
+        retriever = base_retriever
     
         extraction_prompt = self.create_extraction_prompt()
         recommendation_prompt = self.create_recommendation_prompt()
@@ -260,26 +307,67 @@ class Guidelines:
 
         debug_component = RunnableLambda(debug_patient_data)
 
+        def debug_recommendation_data(rec_data):
+            """Helper method to debug rec data"""
+            print("\n==== DEBUG: REC DATA ====")
+            print(f"Type: {type(rec_data)}")
+            print(f"Content: {rec_data}")
+            print("============================\n")
+            return rec_data
 
-        # Define retrieval step as a named function or component
+        debug_rec_component = RunnableLambda(debug_recommendation_data)
+
+        #original
+        # def retrieve_and_format_guidelines(inputs):
+        #     # relevant_docs = retriever.invoke(query)
+        #     relevant_docs = retriever.invoke(inputs.get("clinical_note",""))
+        #     # for doc in relevant_docs:
+        #     #     print(f"doc: {doc}\n")
+        #     return {
+        #         "patient_data": inputs["patient_data"],
+        #         "guidelines": "\n\n".join([doc.page_content for doc in relevant_docs])
+        #     }
+
+        # def retrieve_and_format_guidelines(inputs):
+        #     print(f'inputs: {inputs}')
+        #     query = inputs.get("clinical_note", "")
+        #     print("\n==== RETRIEVAL DEBUG ====")
+        #     print(f"Query sent to retriever:\n{query}\n")
+        #     relevant_docs = retriever.invoke(query)
+        #     print(f"Number of retrieved docs: {len(relevant_docs)}")
+        #     for i, doc in enumerate(relevant_docs):
+        #         print(f"\n--- Retrieved Doc #{i+1} ---")
+        #         # print(doc.page_content[:2500])  # Print first 500 chars for brevity
+        #         print(doc.page_content)  # Print first 500 chars for brevity
+        #     print("=========================\n")
+        #     return {
+        #         "patient_data": inputs["patient_data"],
+        #         "guidelines": "\n\n".join([doc.page_content for doc in relevant_docs])
+        #     }
+
         def retrieve_and_format_guidelines(inputs):
-            # query = self.create_query_from_patient_data(inputs["patient_data"])
-            # query = "52 year old female with past medical history of: black eyes, bruises on her arms, feels sad, low appetite. Social history of smoking_status: smokes, alcohol_use: drinks 5 beers per day. Previous_screening_tests of: low-dose CT scan of chest"
-            query = """Patient is a 52 year old female. The patient smokes, drinks 5 beers per day.  She currently has been coughing for at least 2 months.
-    She had a low-dose CT scan of her chest six months ago that was normal. Her last colonoscopy was 1 year ago, and it was normal.
-    She reports feeling sad and without purpose after her husband passed away six months ago.  She is not eating well and is sleeping very little.
-    The patient's mother died of breast cancer at age 45. The patient has a black eye, and bruises on her arms. Her blood pressure is 190/100 today. She is overweight now, having gained 15 pounds since
-    last visit.  She reports eating lots of carbohydrates and junk food."""
-
-            # query = """Patient is a 68 year old male. The patient smoked 35 years ago, but no longer does.  He has had multiple sexual partners in the last year. 
-            # He has had angina in the past ten years, and required 2 stents 3 years ago.  He reports being unsteady on his feet, and he walks with a cane now. 
-            # He reports that he has a family history of prostate cancer in his father who was 80 when diagnosed.  His mother had low bone density at age 65.  His blood pressure today is 180/85, but he feels fine.
-            # He mentions that he is unsure of his future and how fast the world is changing. This keeps him up at night, and he doesn't want to go out with friends anymore and gets nervous around crowds now due to 
-            # feeling unsafe."""
+            print(f'inputs: {inputs}')
+            query = inputs.get("clinical_note", "") + "PATIENT INFORMATION (STRUCTURED): " + str(inputs['patient_data'])
+            print("\n==== RETRIEVAL DEBUG ====")
+            print(f"Query sent to retriever:\n{query}\n")
             relevant_docs = retriever.invoke(query)
+            print(f"Number of retrieved docs: {len(relevant_docs)}")
+            # Deduplicate by page_content
+            seen = set()
+            unique_docs = []
+            for doc in relevant_docs:
+                content = doc.page_content.strip()
+                if content not in seen:
+                    seen.add(content)
+                    unique_docs.append(doc)
+            print(f"Number of unique docs after deduplication: {len(unique_docs)}")
+            for i, doc in enumerate(unique_docs):
+                print(f"\n--- Retrieved Doc #{i+1} ---")
+                print(doc.page_content)
+            print("=========================\n")
             return {
                 "patient_data": inputs["patient_data"],
-                "guidelines": "\n\n".join([doc.page_content for doc in relevant_docs])
+                "guidelines": "\n\n".join([doc.page_content for doc in unique_docs])
             }
         # Create a named component
         guidelines_fetcher = RunnableLambda(retrieve_and_format_guidelines)
@@ -289,14 +377,17 @@ class Guidelines:
             # Start with clinical note
             # {"clinical_note": lambda x: x}
             # Extract patient information using JSON output parser
-            {"patient_data": extraction_prompt | self.llm | JsonOutputParser() }
+            {"patient_data": extraction_prompt | self.llm | JsonOutputParser(),
+            "clinical_note": lambda x: x["clinical_note"] }
 
             | debug_component
             # Retrieve relevant guidelines
             | guidelines_fetcher
             # Generate recommendations
             | {"patient_data": lambda x: x["patient_data"],
-               "recommendations": recommendation_prompt | self.llm | JsonOutputParser()}
+               "screening_recommendations": recommendation_prompt | self.llm | JsonOutputParser() }
+            #    "screening_recommendations": recommendation_prompt | self.llm }
+            # | debug_rec_component
         )
 
 
@@ -304,42 +395,19 @@ class Guidelines:
         """End-to-end process to generate screening recommendations using LCEL pipeline."""
         # Process the clinical note through the RAG pipeline
         result = self.rag_pipeline.invoke(clinical_note)
-        # print(f"final result: {result}")
+        print(f"####FINAL RESULT####: {result}")
         # Print intermediate results for debugging
         # print(f"Extracted patient data: {result['patient_data']}")
         
         return {
             "patient_data": result["patient_data"],
             # "recommendations": result["recommendations"].content
-            "recommendations": result["recommendations"]
+            "recommendations": result["screening_recommendations"]
         }
 
-# Example usage
 def main():
     # Initialize the system - no API key needed as we're using GOOGLE_API_KEY from environment
     screening_system = Guidelines()
-    
-    # Example clinical note
-    # clinical_note = """
-    # Patient is a 52-year-old female presenting for annual check-up. 
-    # Past medical history significant for hypertension, type 2 diabetes (diagnosed 2019), and mild depression.
-    # Family history notable for breast cancer in mother (diagnosed at age 49) and colorectal cancer in father (age 62).
-    # Social history: Former smoker, quit 5 years ago. 30 pack-year history. Drinks alcohol socially (2-3 drinks/week).
-    # Gets moderate exercise 2x weekly.
-    # Last colonoscopy was in 2018 (normal). Last mammogram in 2021 (BIRADS 2). 
-    # Last Pap smear in 2020 (normal). Last lipid panel 1 year ago (borderline high LDL).
-    # """
-    clinical_note =   """Patient is a 52 year old female. The patient smokes, drinks 5 beers per day.  She currently has been coughing for at least 2 months.
-    She had a low-dose CT scan of her chest six months ago that was normal. Her last colonoscopy was 1 year ago, and it was normal.
-    She reports feeling sad and without purpose after her husband passed away six months ago.  She is not eating well and is sleeping very little.
-    The patient's mother died of breast cancer at age 45. The patient has a black eye, and bruises on her arms. Her blood pressure is 190/100 today. She is overweight now, having gained 15 pounds since
-    last visit.  She reports eating lots of carbohydrates and junk food."""
-    
-    # clinical_note =   """Patient is a 68 year old male. The patient smoked 35 years ago, but no longer does.  He has had multiple sexual partners in the last year. 
-    # He has had angina in the past ten years, and required 2 stents 3 years ago.  He reports being unsteady on his feet, and he walks with a cane now. 
-    # He reports that he has a family history of prostate cancer in his father who was 80 when diagnosed.  His mother had low bone density at age 65.  His blood pressure today is 180/85, but he feels fine.
-    # He mentions that he is unsure of his future and how fast the world is changing. This keeps him up at night, and he doesn't want to go out with friends anymore and gets nervous around crowds now due to 
-    # feeling unsafe."""
     # Generate recommendations
     results = screening_system.generate_recommendations({"clinical_note" : clinical_note})
     
@@ -347,8 +415,6 @@ def main():
     print("\nRECOMMENDED SCREENING TESTS:")
     print(results["recommendations"])
     print("\n")
-
-
 
 if __name__ == "__main__":
     main()

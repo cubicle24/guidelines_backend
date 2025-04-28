@@ -53,28 +53,30 @@ class GuidelinesLoader(BaseLoader):
         
         return documents
     
+        #     4. evidence_grade: The strength of evidence is given a grade of one or more of the following choices: A, B, C, D, I
+        # 5. population.gender: Gender this applies to. Encode 1 of the following 3 choices: male, female, both
+        # 6. population.min_age: Minimum age this applies to (number)
+        # 7. population.max_age: Maximum age this applies to (number)
+        # 8. population.pregnant: Whether this applies to pregnant women (true/false)
+        # 9. screening_interval: How frequent screening should occur, in years. That is, the patient should be screened every X year(s).
+        # 10. type: Type of guideline (e.g., Screening, Prevention, Treatment)
     def _extract_metadata_with_llm(self, content: str, filename: str, file_path: str) -> Dict[str, Any]:
         """Extract metadata from document content using an LLM."""
         # Create a prompt for the LLM to extract metadata
         prompt = f"""
         Extract metadata from this medical guideline document as structured JSON.
+        There should not be any nested structures.
         
         Filename: {filename}
         
         First 3000 characters of document content: 
-        {content[:3000]}...
+        {content[:1000]}...
         
         Extract the following metadata:
         1. governing_body: The organization or professional society that published this guideline (e.g., USPSTF, IDSA, AMA). Name the same governing_body the same way every time. 
         2. topic: The medical condition or topic this guideline addresses
         3. pub_date: The full date if available (YYYY-MM-DD format)
-        4. evidence_grade: The strength of evidence is given a grade of one or more of the following choices: A, B, C, D, I
-        5. population.gender: Gender this applies to. Encode 1 of the following 3 choices: male, female, both
-        6. population.min_age: Minimum age this applies to (number)
-        7. population.max_age: Maximum age this applies to (number)
-        8. population.pregnant: Whether this applies to pregnant women (true/false)
-        9. screening_interval: How frequent screening should occur, in years. That is, the patient should be screened every X year(s).
-        10. type: Type of guideline (e.g., Screening, Prevention, Treatment)
+
 
         The metadata is often, but not always, found in a summary section at the beginning of the document in a section
         which has the following format:
