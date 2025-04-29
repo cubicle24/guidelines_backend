@@ -312,34 +312,6 @@ class Guidelines:
 
         debug_rec_component = RunnableLambda(debug_recommendation_data)
 
-        #original
-        # def retrieve_and_format_guidelines(inputs):
-        #     # relevant_docs = retriever.invoke(query)
-        #     relevant_docs = retriever.invoke(inputs.get("clinical_note",""))
-        #     # for doc in relevant_docs:
-        #     #     print(f"doc: {doc}\n")
-        #     return {
-        #         "patient_data": inputs["patient_data"],
-        #         "guidelines": "\n\n".join([doc.page_content for doc in relevant_docs])
-        #     }
-
-        # def retrieve_and_format_guidelines(inputs):
-        #     print(f'inputs: {inputs}')
-        #     query = inputs.get("clinical_note", "")
-        #     print("\n==== RETRIEVAL DEBUG ====")
-        #     print(f"Query sent to retriever:\n{query}\n")
-        #     relevant_docs = retriever.invoke(query)
-        #     print(f"Number of retrieved docs: {len(relevant_docs)}")
-        #     for i, doc in enumerate(relevant_docs):
-        #         print(f"\n--- Retrieved Doc #{i+1} ---")
-        #         # print(doc.page_content[:2500])  # Print first 500 chars for brevity
-        #         print(doc.page_content)  # Print first 500 chars for brevity
-        #     print("=========================\n")
-        #     return {
-        #         "patient_data": inputs["patient_data"],
-        #         "guidelines": "\n\n".join([doc.page_content for doc in relevant_docs])
-        #     }
-
         def retrieve_and_format_guidelines(inputs):
             print(f'inputs: {inputs}')
             query = inputs.get("clinical_note", "") + "PATIENT INFORMATION (STRUCTURED): " + str(inputs['patient_data'])
@@ -370,8 +342,6 @@ class Guidelines:
         # Build the LCEL pipeline with named components
         self.rag_pipeline = (
             # Start with clinical note
-            # {"clinical_note": lambda x: x}
-            # Extract patient information using JSON output parser
             {"patient_data": extraction_prompt | self.llm | JsonOutputParser(),
             "clinical_note": lambda x: x["clinical_note"] }
 
@@ -391,22 +361,17 @@ class Guidelines:
         # Process the clinical note through the RAG pipeline
         result = self.rag_pipeline.invoke(clinical_note)
         print(f"####FINAL RESULT####: {result}")
-        # Print intermediate results for debugging
-        # print(f"Extracted patient data: {result['patient_data']}")
         
         return {
             "patient_data": result["patient_data"],
-            # "recommendations": result["recommendations"].content
             "recommendations": result["screening_recommendations"]
         }
 
 def main():
-    # Initialize the system - no API key needed as we're using GOOGLE_API_KEY from environment
     screening_system = Guidelines()
     # Generate recommendations
     results = screening_system.generate_recommendations({"clinical_note" : clinical_note})
     
-    # Print recommendations
     print("\nRECOMMENDED SCREENING TESTS:")
     print(results["recommendations"])
     print("\n")
