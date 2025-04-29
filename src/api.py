@@ -18,7 +18,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, validator
 import uvicorn
 
-from Guidelines import Guidelines
+from .Guidelines import Guidelines
 
 # Configure logging
 logging.basicConfig(
