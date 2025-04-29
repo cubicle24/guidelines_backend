@@ -12,7 +12,7 @@ from langchain_core.runnables import RunnableLambda
 from langchain_core.runnables import RunnableSequence  # Import RunnableSequence
 import os
 from langchain_core.output_parsers import JsonOutputParser
-from GuidelinesLoader import GuidelinesLoader
+from .GuidelinesLoader import GuidelinesLoader
 from langchain_groq import ChatGroq
 from sentence_transformers import SentenceTransformer
 from langchain.embeddings.base import Embeddings
