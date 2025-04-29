@@ -69,7 +69,7 @@ class ClinicalNoteRequest(BaseModel):
         return v
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "clinical_note": "Patient is a 68 year old male. The patient smoked 35 years ago, but no longer does. He has had multiple sexual partners in the last year. He has had angina in the past ten years, and required 2 stents 3 years ago."
             }
@@ -192,7 +192,7 @@ async def get_recommendations(request: ClinicalNoteRequest):
             detail=f"Error generating recommendations: {str(e)}"
         )
 
-@app.get("/guidelines/hello")
+@app.get("/")
 async def health_check():
     """Tests to verify the API is running."""
     return {"status": "hello", "time": time.time()}
@@ -202,7 +202,7 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     host = os.environ.get("HOST", "0.0.0.0")
     
-    logger.info(f"Starting Guidelines API server on {host}:{port}")
+    logger.info(f"Health check called: Guidelines API server on {host}:{port}")
     uvicorn.run(
         "api:app", 
         host=host, 
