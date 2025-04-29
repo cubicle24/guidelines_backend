@@ -55,11 +55,11 @@ class Guidelines:
 
         elif model_name == "deepseek":
             print(f"selecting deepseek model")
-            self.llm = ChatGroq(model="deepseek-r1-distill-llama-70b", temperature=0.0")
+            self.llm = ChatGroq(model="deepseek-r1-distill-llama-70b", temperature=0.0)
             self.embeddings = SentenceTransformerEmbeddings('emilyalsentzer/Bio_ClinicalBERT')
         elif model_name == "llama3":
             print(f"selecting llama3 model")
-            self.llm = ChatGroq(model="llama3-70b-8192", temperature=0.0")
+            self.llm = ChatGroq(model="llama3-70b-8192", temperature=0.0)
             self.embeddings = SentenceTransformerEmbeddings('emilyalsentzer/Bio_ClinicalBERT')
         elif model_name == "llama3_fireworks":
             print(f"selecting llama3 fireworks model")
