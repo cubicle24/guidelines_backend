@@ -55,28 +55,24 @@ class Guidelines:
 
         elif model_name == "deepseek":
             print(f"selecting deepseek model")
-            self.llm = ChatGroq(model="deepseek-r1-distill-llama-70b", temperature=0.0, api_key="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")
+            self.llm = ChatGroq(model="deepseek-r1-distill-llama-70b", temperature=0.0")
             self.embeddings = SentenceTransformerEmbeddings('emilyalsentzer/Bio_ClinicalBERT')
         elif model_name == "llama3":
             print(f"selecting llama3 model")
-            self.llm = ChatGroq(model="llama3-70b-8192", temperature=0.0, api_key="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")
+            self.llm = ChatGroq(model="llama3-70b-8192", temperature=0.0")
             self.embeddings = SentenceTransformerEmbeddings('emilyalsentzer/Bio_ClinicalBERT')
         elif model_name == "llama3_fireworks":
             print(f"selecting llama3 fireworks model")
-            self.llm = ChatFireworks(model="accounts/fireworks/models/llama-v3p3-70b-instruct", temperature=0.0, api_key="fw_3ZkSCakHDYEgb98FFfDK8Aqe")
+            self.llm = ChatFireworks(model="accounts/fireworks/models/llama-v3p3-70b-instruct", temperature=0.0)
             self.embeddings = SentenceTransformerEmbeddings('emilyalsentzer/Bio_ClinicalBERT')
-        # elif model_name == "deepseek_fireworks":#don't use this one it's $8 and slow
-        #     print(f"selecting deepseek fireworks model")
-        #     self.llm = ChatFireworks(model="accounts/fireworks/models/deepseek-r1", temperature=0.0, api_key="fw_3ZkSCakHDYEgb98FFfDK8Aqe")
-        #     self.embeddings = SentenceTransformerEmbeddings('emilyalsentzer/Bio_ClinicalBERT')
         elif model_name == "llama4_fireworks":
             print(f"selecting llama4 fireworks model")
-            self.llm = ChatGroq(model="accounts/fireworks/models/llama4-scout-instruct-basic", temperature=0.0, api_key="fw_3ZkSCakHDYEgb98FFfDK8Aqe")
+            self.llm = ChatGroq(model="accounts/fireworks/models/llama4-scout-instruct-basic", temperature=0.0)
             self.embeddings = SentenceTransformerEmbeddings('emilyalsentzer/Bio_ClinicalBERT')
         else:
             print(f"selecting lllama4 groq model")
             groq_api_key = os.environ.get("GROQ_API_KEY")
-            self.llm = ChatGroq(model="meta-llama/llama-4-scout-17b-16e-instruct", temperature=0.0, api_key="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")
+            self.llm = ChatGroq(model="meta-llama/llama-4-scout-17b-16e-instruct", temperature=0.0)
             # self.embeddings = SentenceTransformerEmbeddings('all-mpnet-base-v2')
             self.embeddings = SentenceTransformerEmbeddings('emilyalsentzer/Bio_ClinicalBERT')
             # self.embeddings = SentenceTransformerEmbeddings('microsoft/BiomedNLP-PubMedBERT-base-uncased-abstract-fulltext')
@@ -95,18 +91,17 @@ class Guidelines:
         except:
     # Remove the existing database directory if it exists
 
-            print("Creating new guideline database with LLM metadata extraction")
+            print("Creating new guidelines database")
             
-            # Use the LLM-based metadata extractor
             loader = GuidelinesLoader("../guidelines_repository", llm=self.llm)
             documents = loader.load()
             
-            print(f"Loaded {len(documents)} guideline documents with LLM-extracted metadata")
+            print(f"Loaded {len(documents)} guideline documents and extracted metadata")
             
             # Split documents while preserving metadata
-            text_splitter = RecursiveCharacterTextSplitter(separators=["\n\n", "\n", ".", " "],  # <- prioritizes paragraphs first
+            text_splitter = RecursiveCharacterTextSplitter(separators=["\n\n", "\n", ".", " "],
             chunk_size=1000, chunk_overlap=100)
-            splits = text_splitter.split_documents(documents)#this does the chunking
+            splits = text_splitter.split_documents(documents)
             # splits = documents #skips chunking
             
             print(f"Split into {len(splits)} chunks for indexing")
@@ -114,7 +109,7 @@ class Guidelines:
             # Create vector database
             self.vector_db = Chroma.from_documents(
                 documents=splits,
-                embedding=self.embeddings,  # Use our wrapper class
+                embedding=self.embeddings,
                 collection_name="preventive_guidelines",
                 persist_directory="../guidelines_db"
             )
