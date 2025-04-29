@@ -19,8 +19,10 @@ from langchain.embeddings.base import Embeddings
 from langchain_fireworks import ChatFireworks
 import shutil
 
-
-
+#without these abs paths, won't deploy correctly  on cloud servers that don't resolve relative paths well
+script_dir = os.path.dirname(os.path.realpath(__file__))
+guidelines_repo_path = os.path.abspath(os.path.join(script_dir, "../guidelines_repository"))
+persist_db_path = os.path.abspath(os.path.join(script_dir, "../guidelines_db"))
 class SentenceTransformerEmbeddings(Embeddings):
     """Wrapper for sentence_transformers embeddings to work with LangChain."""
     
@@ -39,9 +41,7 @@ class SentenceTransformerEmbeddings(Embeddings):
 class Guidelines:
     def __init__(self, api_key=None):
         """Initialize the RAG system with necessary components."""
-        # self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro-exp-03-25", temperature=0.0)
         self.choose_model("google")
-        # self.embeddings = SentenceTransformerEmbeddings('all-MiniLM-L6-v2')
         self.setup_vector_db()
         self.setup_rag_pipeline()
 
@@ -50,6 +50,7 @@ class Guidelines:
         if model_name == "google":
             print(f"selecting google model")
             self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-preview-04-17", temperature=0.0)
+            # self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro-exp-03-25", temperature=0.0)
             # self.embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001",google_api_key=os.environ.get("GOOGLE_API_KEY"))
             # self.embeddings = SentenceTransformerEmbeddings('emilyalsentzer/Bio_ClinicalBERT')
             # model_small = SentenceTransformer("abhinand/MedEmbed-small-v0.1")
@@ -81,41 +82,82 @@ class Guidelines:
             # self.embeddings = SentenceTransformerEmbeddings('dmis-lab/biobert-base-cased-v1.1')
     def setup_vector_db(self):
         """Load and index clinical guidelines into a vector database with LLM-extracted metadata."""
-        try:
-            raise Exception("Forcing an error to test the except block")
-            # Try to load existing vector database
-            self.vector_db = Chroma(
-                collection_name="preventive_guidelines",
-                embedding_function=self.embeddings,  # Use our wrapper class
-                persist_directory="../guidelines_db",
-            )
-            print("Loaded existing guideline database")
-        except:
-    # Remove the existing database directory if it exists
+        collection_name = "preventive_guidelines"
 
-            print("Creating new guidelines database")
-            
-            loader = GuidelinesLoader("../guidelines_repository", llm=self.llm)
+        # Use the absolute path variables defined above
+        persist_directory = persist_db_path
+        repo_directory = guidelines_repo_path
+
+        # Check if the database directory exists and try loading
+        if os.path.exists(persist_directory):
+            try:
+                print(f"Attempting to load existing guideline database from: {persist_directory}")
+                self.vector_db = Chroma(
+                    collection_name=collection_name,
+                    embedding_function=self.embeddings,
+                    persist_directory=persist_directory,
+                )
+                # Verify collection has data
+                if self.vector_db._collection.count() > 0:
+                    print(f"Successfully loaded existing guideline database with {self.vector_db._collection.count()} items.")
+                    return # Successfully loaded, exit the function
+                else:
+                    print("Existing database found but is empty. Will recreate.")
+                    # Optionally remove the empty DB directory if needed
+                    # shutil.rmtree(persist_directory)
+            except Exception as e:
+                print(f"Error loading existing database: {e}. Will recreate.")
+                # Optionally remove potentially corrupted DB directory
+                if os.path.exists(persist_directory):
+                     try:
+                         shutil.rmtree(persist_directory)
+                         print(f"Removing potentially corrupted database directory: {persist_directory}")
+                     except OSError as rm_error:
+                         print(f"Error removing directory {persist_directory}: {rm_error}")
+
+        # If loading failed or directory didn't exist, create a new one
+        print(f"Creating new guidelines database in: {persist_directory}")
+        print(f"Loading documents from: {repo_directory}") # Log the path being used
+
+        #if you reach here, you're creating the vector db (again)
+        try:
+            # Use the absolute path for the loader
+            loader = GuidelinesLoader(repo_directory, llm=self.llm)
             documents = loader.load()
-            
+
+            if not documents:
+                print(f"Error: No documents were loaded from '{repo_directory}'. Please check the directory exists and contains files in the Railway deployment.")
+                raise ValueError(f"Failed to load any documents from {repo_directory} for vector DB creation.")
+
             print(f"Loaded {len(documents)} guideline documents and extracted metadata")
-            
+
             # Split documents while preserving metadata
-            text_splitter = RecursiveCharacterTextSplitter(separators=["\n\n", "\n", ".", " "],
-            chunk_size=1000, chunk_overlap=100)
+            text_splitter = RecursiveCharacterTextSplitter(
+                separators=["\n\n", "\n", ".", " "],
+                chunk_size=1000,
+                chunk_overlap=100
+            )
             splits = text_splitter.split_documents(documents)
-            # splits = documents #skips chunking
-            
+
+            if not splits:
+                print("Error: Document splitting resulted in zero chunks. Check document content and splitter settings.")
+                raise ValueError("Document splitting resulted in zero chunks.")
+
             print(f"Split into {len(splits)} chunks for indexing")
-            
-            # Create vector database
+
+            # Create vector database using the absolute path
             self.vector_db = Chroma.from_documents(
                 documents=splits,
-                embedding=self.embeddings,
-                collection_name="preventive_guidelines",
-                persist_directory="../guidelines_db"
+                embedding=self.embeddings, # Corrected parameter name
+                collection_name=collection_name,
+                persist_directory=persist_directory
             )
-    
+            print("Successfully created and persisted new guidelines database.")
+
+        except Exception as e:
+            print(f"An error occurred during new database creation: {e}")
+            raise
+
     def create_extraction_prompt(self):
         """Set up LLM chain for extracting patient information from a clinical note."""
         extraction_prompt = PromptTemplate(
