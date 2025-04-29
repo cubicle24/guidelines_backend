@@ -51,8 +51,10 @@ class Guidelines:
             print(f"selecting google model")
             self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-preview-04-17", temperature=0.0)
             # self.embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001",google_api_key=os.environ.get("GOOGLE_API_KEY"))
-            self.embeddings = SentenceTransformerEmbeddings('emilyalsentzer/Bio_ClinicalBERT')
-
+            # self.embeddings = SentenceTransformerEmbeddings('emilyalsentzer/Bio_ClinicalBERT')
+            # model_small = SentenceTransformer("abhinand/MedEmbed-small-v0.1")
+            self.embeddings = SentenceTransformerEmbeddings("abhinand/MedEmbed-base-v0.1")
+            # model_large = SentenceTransformer("abhinand/MedEmbed-large-v0.1")
         elif model_name == "deepseek":
             print(f"selecting deepseek model")
             self.llm = ChatGroq(model="deepseek-r1-distill-llama-70b", temperature=0.0)
@@ -80,7 +82,7 @@ class Guidelines:
     def setup_vector_db(self):
         """Load and index clinical guidelines into a vector database with LLM-extracted metadata."""
         try:
-            # raise Exception("Forcing an error to test the except block")
+            raise Exception("Forcing an error to test the except block")
             # Try to load existing vector database
             self.vector_db = Chroma(
                 collection_name="preventive_guidelines",
