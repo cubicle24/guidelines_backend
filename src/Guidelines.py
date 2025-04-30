@@ -215,23 +215,21 @@ class Guidelines:
             Recommend all screening tests that the patient meets the criteria for, based primarily on the patient's age, gender, and pregnancy status. 
             Never recommend a screening test for a male that only applies to females, and vice versa.  If a female is not pregnant, do not recommend any pregnancy specific tests.
 
-            Do not make up information.  Do not query the internet.  Do not use your general knowledge. Only conssult the retrieved documents. 
+            Do not make up information nor query the internet nor use your general knowledge. Only consult the retrieved documents. 
             If a test is not indicated, do not mention or recommend it at all. Double check your recommendations to never make the error of recommending a test that the patient does not meet criteria for.
 
             If you can not make any recommendations, state that you can not make any recommendations.
             
-            Generate a ranked list of recommended screening tests from highest to lowest priority.  
-            For each recommendation, provide your justification and reasoning for the recommendation based on the guidelines.  Limit the justification to 100 words or less.            
+            For each recommendation, provide your justification and reasoning for making the recommendation based on the guidelines.  Limit the justification to 100 words or less.            
             If your justification is that the patient does not fit the guidelines and are therefore not recommending a test, remove the recommendation from the list.  Do not list it all.
 
             Then cite the evidence (source) by finding the metadata associated with the retrieved documents. Cite the "governing_body", "topic", and "pub_date" that you consulted to make the recommendation.
             
             After first looking only at the provided guidelines and giving recommendations, attach a set of additional recommendations.
-            For this section, read the entire clinical note, then you may use your general knowledge as well as ONLY search the US Preventive Task 
+            For this section, read the entire clinical note. Then you may use your general knowledge, as well as ONLY search the US Preventive Task 
             Force Guidelines website for additional screening tests that the patient meets criteria for, focusing on age, gender, and pregnancy status. 
             Make as many additional recommendations as you can find reasonable justification for. Attach these
-            additional recommendations under the JSON key "additional_recommendations" so that it is clear these come 
-            from outside sources.
+            additional recommendations under the JSON key "additional_recommendations" so that it is clear these come from external sources.
 
             Patient Information:
             {patient_data}
@@ -241,7 +239,7 @@ class Guidelines:
 
             If you have no guidelines to consult, return an empty but valid JSON object. 
             Return only the JSON object, with no extra text or formatting. Respond ONLY with valid JSON matching this schema. Do not add any extra keys or text.
-            If you have relevant guidelines to consult, order recommendations as a ranked list (from highest to lowest priority).  
+            Generate recommendations as a ranked list (from highest to lowest priority).  
             Return all recommendations in this EXACT JSON structure and format below. 
             Do not include any text outside the JSON object. Double check five times that the output JSON matches the schema exactly. If not, modify the output.
            
@@ -257,7 +255,7 @@ class Guidelines:
                         "evidence": "USPSTF recommends screening for osteoporosis in women 65 years or older (moderate certainty)",
                         "governing_body": "USPSTF",
                         "topic": "Osteoporosis",
-                        "pub_date": "Not specified"
+                        "pub_date": "2020"
                     }},
                     {{
                         "test": "Diabetes screening",
