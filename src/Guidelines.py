@@ -409,11 +409,21 @@ class Guidelines:
         # Process the clinical note through the RAG pipeline
         result = self.rag_pipeline.invoke(clinical_note)
         print(f"####FINAL RESULT####: {result}")
-        
+
+        result = self.normalize_response(result)
+
         return {
             "patient_data": result["patient_data"],
             "recommendations": result["screening_recommendations"]
         }
+
+    def normalize_response(self, response_data):
+        """the LLM randomly inserts an extra "recommendations" key in the output, so we need to remove it if it exists"""
+        recs = response_data.get("screening_recommendations", {}).get("recommendations", {})
+        if isinstance(recs, dict) and "recommendations" in recs:
+            response_data["screening_recommendations"]["recommendations"] = recs["recommendations"]
+            response_data["screening_recommendations"]["additional_recommendations"] = recs["additional_recommendations"]
+        return response_data
 
 def main():
     screening_system = Guidelines()
