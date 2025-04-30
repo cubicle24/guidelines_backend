@@ -18,6 +18,10 @@ from sentence_transformers import SentenceTransformer
 from langchain.embeddings.base import Embeddings
 from langchain_fireworks import ChatFireworks
 import shutil
+from dotenv import load_dotenv
+
+
+load_dotenv()
 
 #without these abs paths, won't deploy correctly  on cloud servers that don't resolve relative paths well
 script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -49,7 +53,10 @@ class Guidelines:
         """Set up the model and embeddings based on the model name. Allows you to switch LLMs"""
         if model_name == "google":
             print(f"selecting google model")
-            self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-preview-04-17", temperature=0.0)
+            google_api_key = os.getenv("GOOGLE_API_KEY")
+            if not google_api_key:
+                raise ValueError("GOOGLE_API_KEY environment variable is not found.")
+            self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-preview-04-17", temperature=0.0, google_api_key=google_api_key)
             # self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro-exp-03-25", temperature=0.0)
             # self.embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001",google_api_key=os.environ.get("GOOGLE_API_KEY"))
             # self.embeddings = SentenceTransformerEmbeddings('emilyalsentzer/Bio_ClinicalBERT')
