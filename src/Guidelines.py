@@ -207,7 +207,7 @@ class Guidelines:
             template="""
            
             <SYSTEM>:
-            You are a backend API response generator. Output must be valid JSON only. Do not include any preamble, commentary, or prose. Only return a single JSON object that matches the format provided.
+            You are a backend API response generator. Output must be valid JSON only. Do not include any preamble, commentary, or prose. Only return a single JSON object that matches the schema provided.
 
             Your task is to generate evidence-based screening recommendations for a patient based on their medical information and the provided clinical guidelines.
             First, extract the patient's age, gender, and pregnancy status. These 3 pieces of information are the most important for determining which screening tests to recommend.
@@ -240,11 +240,10 @@ class Guidelines:
             {guidelines}
 
             If you have no guidelines to consult, return an empty but valid JSON object. 
-            Return only the JSON object, with no extra text or formatting.
+            Return only the JSON object, with no extra text or formatting. Respond ONLY with valid JSON matching this schema. Do not add any extra keys or text.
             If you have relevant guidelines to consult, order recommendations as a ranked list (from highest to lowest priority).  
             Return all recommendations in this EXACT JSON structure and format below. 
-            Do not include any text outside the JSON object. Double check five times and self-correct that valid JSON is returned.
-            Before you return the JSON object, triple check that the JSON follows the structure below and modify the structure if it does not.
+            Do not include any text outside the JSON object. Double check five times that the output JSON matches the schema exactly. If not, modify the output.
            
 
             <EXAMPLE OUTPUT>:
@@ -334,8 +333,8 @@ class Guidelines:
         
         # Creating a retriever from a vector database
         base_retriever = self.vector_db.as_retriever(
-            search_kwargs={"k":10},search_type="mmr",lambda_mult=0.1)
-            # search_kwargs={"k":15},search_type="similarity")
+            # search_kwargs={"k":10},search_type="mmr",lambda_mult=0.1)
+            search_kwargs={"k":10},search_type="similarity")
         compressor = LLMChainExtractor.from_llm(self.llm)
         # retriever = ContextualCompressionRetriever(base_compressor=compressor, base_retriever=base_retriever)
         retriever = base_retriever

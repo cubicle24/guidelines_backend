@@ -75,6 +75,15 @@ class ClinicalNoteRequest(BaseModel):
             }
         }
 
+class RecommendationItem(BaseModel):
+    test: str
+    justification: str
+    next_due_date: str
+    evidence: str
+    governing_body: str
+    topic: str
+    pub_date: str
+
 class RecommendationResponse(BaseModel):
     patient_data: Dict[str, Any]
     recommendations: Dict[str, Any]
