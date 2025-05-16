@@ -147,31 +147,11 @@ async def generic_exception_handler(request: Request, exc: Exception):
     )
 
 # API endpoints
-# @app.post("/guidelines/recommendations", response_model=RecommendationResponse)
-# async def get_recommendations(request: ClinicalNoteRequest):
-#     """
-#     Generate screening recommendations based on a clinical note.
-    
-#     Returns patient data extracted from the note and recommended screening tests.
-#     """
-#     try:
-#         logger.info("Processing recommendation request")
-#         results = guidelines_system.generate_recommendations({"clinical_note": request.clinical_note})
-#         logger.info("Successfully generated recommendations")
-#         logger.info(f"******Results:****** {results}")
-#         return results
-#     except Exception as e:
-#         logger.error(f"Error generating recommendations: {str(e)}", exc_info=True)
-#         raise HTTPException(
-#             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-#             detail=f"Error generating recommendations: {str(e)}"
-#         )
 
 @app.post("/guidelines/recommendations", response_model=RecommendationResponse)
 async def get_recommendations(request: ClinicalNoteRequest):
     """
     Generate screening recommendations based on a clinical note.
-    
     Returns patient data extracted from the note and recommended screening tests.
     """
     try:
