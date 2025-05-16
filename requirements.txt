@@ -20,6 +20,8 @@ Deprecated==1.2.18
 distro==1.9.0
 durationpy==0.9
 fastapi==0.115.12
+fhir-core==1.0.1
+fhir.resources==8.0.0
 filelock==3.18.0
 filetype==1.2.0
 fireworks-ai==0.15.12
@@ -140,4 +142,3 @@ wsproto==1.2.0
 yarl==1.19.0
 zipp==3.21.0
 zstandard==0.23.0
-#moved it into root
