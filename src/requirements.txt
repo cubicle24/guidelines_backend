@@ -64,10 +64,10 @@ jsonpointer==3.0.0
 jupyter_client==8.6.3
 jupyter_core==5.7.2
 kubernetes==32.0.1
-langchain==0.3.23
+langchain==0.3.25
 langchain-chroma==0.2.2
-langchain-community==0.3.21
-langchain-core==0.3.56
+langchain-community==0.3.24
+langchain-core==0.3.62
 langchain-fireworks==0.3.0
 langchain-google-genai==2.1.2
 langchain-groq==0.3.2
