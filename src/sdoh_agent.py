@@ -3,6 +3,7 @@
 # Housing instability, Food insecurity, Lack of transportation, Financial hardship
 # Domestic violence, Language barriers, Low health literacy
 # The agent will automatically recommend the appropriate interventions for each patient
+from hmac import new
 from langgraph.graph import StateGraph
 from langchain_core.runnables import RunnableLambda
 from langchain_core.prompts import PromptTemplate
@@ -19,6 +20,8 @@ from typing import Dict, List, TypedDict, Callable, Any
 import os
 from pathlib import Path
 from datetime import datetime
+from pprint import pprint
+
 
 class SDOHRiskFactor(TypedDict):
     """One patient social risk factor and its relevant properties"""
@@ -75,36 +78,34 @@ def extract_sdoh_risk_factors(state: AgentState) -> AgentState:
     # prompt = load_prompt("../prompts/extract_sdoh_v2.txt", ["clinical_note"])
     prompt = load_prompt("../prompts/extract_sdoh_v3.txt", ["clinical_note"])
     risk_factors = call_llm(prompt, {"clinical_note": clinical_note})
-    new_state = state.copy()
-    new_state["sdoh"] = risk_factors
-    print(f"Extracted SDOH risk factors: {risk_factors}")
+    # new_state = state.copy()
+    # new_state["sdoh"] = risk_factors
+    new_state = {**state, "sdoh": risk_factors}
+    print(f"State after Extracted SDOH risk factors: {new_state}")
     return new_state
+
 
 def map_to_z_codes(state: AgentState) -> AgentState:
     """Map social risk factors to ICD10 Z codes"""
     sdoh_risk_factors = state["sdoh"]
-    # prompt = PromptTemplate(
-    #     input_variables=["sdoh_risk_factors"],
-    #     template="Map the following social risk factors to only valid ICD10 Z codes: {sdoh_risk_factors}. Return valid JSON only.",
-    # )
-    prompt = load_prompt("../prompts/extract_zcodes_v1.txt", ["clinical_note"])
+    prompt = load_prompt("../prompts/extract_zcodes_v1.txt", ["sdoh_risk_factors"])
     z_codes = call_llm(prompt, {"sdoh_risk_factors": sdoh_risk_factors})
-    print(f"Extracted icd10 z codes: {z_codes}")
-    new_state = state.copy()
-    new_state["z_codes"] = z_codes
+    # new_state = state.copy()
+    # new_state["z_codes"] = z_codes
+    new_state = {**state, "sdoh": z_codes}
+    print(f"State after Extracting z codes: {new_state}")
     return new_state
 
 def recommend_interventions(state: AgentState) -> AgentState:
     """Recommend interventions for each social risk factor"""
     sdoh_risk_factors = state["sdoh"]
-    prompt = PromptTemplate(
-        input_variables=["sdoh_risk_factors"],
-        template="Recommend interventions for the following social risk factors: {sdoh_risk_factors}. Return valid JSON only.",
-    )
+    prompt = load_prompt("../prompts/recommend_interventions_v1.txt", ["sdoh_risk_factors"])
+
     interventions = call_llm(prompt, {"sdoh_risk_factors": sdoh_risk_factors})
-    print(f"Making interventions: {interventions}")
-    new_state = state.copy()
-    new_state["interventions"] = interventions
+    # new_state["interventions"] = interventions
+    print(f"sdoh dict after adding interventions: {interventions}")
+
+    new_state = {**state, "sdoh": interventions}
     return new_state
 
 def end_processing(state: AgentState) -> AgentState:

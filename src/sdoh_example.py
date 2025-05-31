@@ -1,6 +1,7 @@
 import json
 from typing import Mapping
 from sdoh_agent import run_agent, AgentState
+from pprint import pprint
 
 def main():
     """Demonstrates the SDOH agent"""
@@ -14,7 +15,7 @@ def main():
         "intervention": {}
     }
     end_state = run_agent(note, start_state)
-    print(f"Final state: {end_state}")
+    pprint(f"Final state: {end_state}")
 
 if __name__ == "__main__":
     main()
